@@ -151,12 +151,54 @@ async function run() {
 
 
 
+        // JWT VERIFY....mod 75(5)
+        function verifyJwt(req,res,next){
+          console.log('ABCCC')
+          const authHeader=req.headers.authorization;
+          if(!authHeader){
+            return res.status(401).send({message:'Unauthorize Access'})
+          }
+          const token=authHeader.split(' ')[1];
+          jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded) {
+            if(err){
+              return res.status(403).send({message:'Forbidden Access'})
+            }
+            console.log(decoded) 
+            req.decoded=decoded;
+            next();
+          });
+        }
+
         // Read/get all serevices...72(8)
         app.get('/services', async (req, res) => {
             const query = {}
             const cursor = servicesCollection.find(query)
             const services = await cursor.toArray()
             res.send(services)
+        })
+
+        // mod 75(6....)
+        // Read/Get all users...
+        // (Users) component...
+        app.get('/user',verifyJwt, async(req,res)=>{
+          const users=await userCollection.find().toArray();
+          res.send(users)
+        })
+        
+        // 75(7)....
+        // ADMIN....
+        // (UseRow) component...
+        app.put('/user/admin/:email', verifyJwt, async (req,res)=>{
+          const email=req.params.email;
+          
+          const filter={email:email};
+          
+          const updateDoc = {
+            $set: {role:'Admin'},
+          };
+          const result=await userCollection.updateOne(filter,updateDoc)
+          res.send(result)
+          
         })
 
         // mod..75(1)
@@ -171,7 +213,7 @@ async function run() {
             $set: user,
           };
           const result=await userCollection.updateOne(filter,updateDoc,options)
-
+ 
           // JWT(token)... mod 75(3)...
           const token=jwt.sign({email:email},process.env.ACCESS_TOKEN_SECRET,{ expiresIn: '10h' })
           res.send({result,token})
@@ -196,17 +238,30 @@ async function run() {
 
         })
 
-        // Read/get booking for MyAppointment...
+        
+
+        // Read/get booking for (MyAppointment)...
         // mod 74(8)....
-        app.get('/booking', async (req, res) => {
+
+        app.get('/booking', verifyJwt, async (req, res) => {
             const patient = req.query.patient;
             // mod 75(4)....
+            /*
             const authorization=req.headers.authorization;
             console.log('auth header',authorization)
-            
+            */
+
+           // mod 75(5)....
+           const decodedEmail=req.decoded.email
+           if(patient===decodedEmail){
             const query = { patient: patient }
             const bookings = await bookingCollection.find(query).toArray();
-            res.send(bookings)
+            return res.send(bookings)
+           }
+
+           else{
+            return res.status(403).send({message:'forbiden access'})
+           } 
         })
 
         // warning::
