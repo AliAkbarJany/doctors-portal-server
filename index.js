@@ -184,21 +184,38 @@ async function run() {
           const users=await userCollection.find().toArray();
           res.send(users)
         })
+        // mod 75(8)....
+        // Admin.....
+        app.get('/admin/:email', async(req,res)=>{
+          const email=req.params.email;
+          const user=await userCollection.findOne({email:email})
+          const isAdmin=user.role==='Admin'
+          res.send({admin:isAdmin})
+
+        })
         
         // 75(7)....
         // ADMIN....
         // (UseRow) component...
         app.put('/user/admin/:email', verifyJwt, async (req,res)=>{
           const email=req.params.email;
-          
-          const filter={email:email};
-          
+
+          // mod 75(8)....
+          const requester=req.decoded.email;
+          // data base thake khjtesi j (requester) er (role) ta ki..
+          const requesterAccount=await userCollection.findOne({email:requester})
+          // mod 75(8)....
+          if(requesterAccount.role==='Admin'){
+            const filter={email:email};
           const updateDoc = {
             $set: {role:'Admin'},
           };
           const result=await userCollection.updateOne(filter,updateDoc)
           res.send(result)
-          
+          }
+          else{
+            res.status(403).send({message:'Forbidden'})
+          }
         })
 
         // mod..75(1)
