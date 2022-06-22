@@ -133,9 +133,10 @@ async function run() {
     try {
         await client.connect()
         console.log('database connected')
-        const servicesCollection = client.db('doctors_portal').collection('services')
-        const bookingCollection = client.db('doctors_portal').collection('bookings')
-        const userCollection = client.db('doctors_portal').collection('users')
+        const servicesCollection = client.db('doctors_portal').collection('services');
+        const bookingCollection = client.db('doctors_portal').collection('bookings');
+        const userCollection = client.db('doctors_portal').collection('users');
+        const doctorCollection = client.db('doctors_portal').collection('doctors');
         
 
 
@@ -169,10 +170,25 @@ async function run() {
           });
         }
 
+        // mod 76(5).....
+        const verifyAdmin= async(req,res,next)=>{
+          // mod 75(8)....
+          const requester=req.decoded.email;
+          // data base thake khjtesi j (requester) er (role) ta ki..
+          const requesterAccount=await userCollection.findOne({email:requester})
+          // mod 75(8)....
+          if(requesterAccount.role==='Admin'){
+            next()
+          }
+          else{
+            res.status(403).send({message:'Forbidden'})
+          }
+        }
+
         // Read/get all serevices...72(8)
         app.get('/services', async (req, res) => {
             const query = {}
-            const cursor = servicesCollection.find(query)
+            const cursor = servicesCollection.find(query).project({name:1})
             const services = await cursor.toArray()
             res.send(services)
         })
@@ -255,6 +271,31 @@ async function run() {
 
         })
 
+        // mod 76(4).......
+        // (Doctor) add...
+        app.post('/doctor',verifyJwt,verifyAdmin, async(req,res)=>{
+          const doctor=req.body;
+          const result=await doctorCollection.insertOne(doctor)
+          res.send(result);
+        })
+
+        // mod 76(5)..
+        // Doctor 
+        app.get('/doctor',verifyJwt,verifyAdmin, async(req,res)=>{
+          const doctors =await doctorCollection.find().toArray();
+          res.send(doctors)
+        })
+
+        // mod 76(6)..
+        app.delete('/doctor/:email',verifyJwt,verifyAdmin, async(req,res)=>{
+          const email=req.params.email;
+          const query={email:email}
+          const result=await doctorCollection.deleteOne(query)
+          res.send(result);
+
+        })
+
+
         
 
         // Read/get booking for (MyAppointment)...
@@ -283,7 +324,7 @@ async function run() {
 
         // warning::
         // this is not the proper way to (query)
-        //     after learning more about (mongodb). use (aggregated lookup),(pipeline),(match), (group)
+        // after learning more about (mongodb). use (aggregated lookup),(pipeline),(match), (group)
 
         app.get('/available', async (req, res) => {
             const date = req.query.date
